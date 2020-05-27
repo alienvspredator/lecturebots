@@ -9,11 +9,18 @@ services:
       - "-dsn=${DSN}"
       - "-token=${TG_TOKEN}"
       - "-redis-addr=${REDIS_ADDR}"
+      - "-rabbitmq-url=${RABBITMQ_URL}"
       - "-v"
     depends_on:
       - redis
+      - rabbitmq
 
   redis:
     image: redis
     ports:
-     - "6379:6379"
+      - 6379:6379
+
+  rabbitmq:
+    image: rabbitmq
+    ports:
+      - 5672:5672

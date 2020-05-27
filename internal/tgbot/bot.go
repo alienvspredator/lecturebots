@@ -4,6 +4,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/streadway/amqp"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 )
@@ -12,6 +13,7 @@ import (
 type BotApp struct {
 	pool   *pgxpool.Pool
 	redis  *redis.Client
+	amqpCh *amqp.Channel
 	logger *zap.Logger
 	api    *tgbotapi.BotAPI
 }
@@ -20,7 +22,8 @@ type BotApp struct {
 func NewApp(
 	pool *pgxpool.Pool,
 	logger *zap.Logger,
-	client *redis.Client,
+	redisClient *redis.Client,
+	amqpCh *amqp.Channel,
 	botAPI *tgbotapi.BotAPI,
 ) (*BotApp, error) {
 	if pool == nil {
@@ -29,9 +32,9 @@ func NewApp(
 	if logger == nil {
 		return nil, xerrors.New("expected zap.Logger pointer, got nil")
 	}
-	if client == nil {
+	if redisClient == nil {
 		return nil, xerrors.New("expected redis.Client pointer, got nil")
 	}
 
-	return &BotApp{pool, client, logger, botAPI}, nil
+	return &BotApp{pool, redisClient, amqpCh, logger, botAPI}, nil
 }

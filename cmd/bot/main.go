@@ -15,17 +15,20 @@ import (
 	"github.com/go-redis/redis/v8"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/streadway/amqp"
 	"go.uber.org/zap"
 )
 
 var (
-	flagToken     string
-	flagVerb      bool
-	flagDSN       string
-	flagRedisAddr string
-	gitCommit     string
+	flagToken       string
+	flagVerb        bool
+	flagDSN         string
+	flagRedisAddr   string
+	flagRabbitMQURL string
 
-	requiredFlags = []string{"token", "dsn", "redis-addr"}
+	requiredFlags = []string{"token", "dsn", "redis-addr", "rabbitmq-url"}
+
+	gitCommit string
 )
 
 func init() {
@@ -41,12 +44,9 @@ func init() {
 See details:
 	https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING`,
 	)
-	flag.StringVar(
-		&flagRedisAddr,
-		"redis-addr",
-		"",
-		"Redis address",
-	)
+
+	flag.StringVar(&flagRedisAddr, "redis-addr", "", "Redis address")
+	flag.StringVar(&flagRabbitMQURL, "rabbitmq-url", "", "RabbitMQ URL")
 }
 
 func newLogger(debug bool) (*zap.Logger, error) {
@@ -93,7 +93,26 @@ func main() {
 		logger.Fatal("Cannot create bot api instance", zap.Error(err))
 	}
 
-	botApp, err := tgbot.NewApp(pool, logger.Named("TG_BOT"), redisClient, bot)
+	rabbitMQ, err := amqp.Dial(flagRabbitMQURL)
+	if err != nil {
+		logger.Fatal("Cannot dial RabbitMQ", zap.Error(err))
+	}
+	defer rabbitMQ.Close()
+
+	amqpCh, err := rabbitMQ.Channel()
+	if err != nil {
+		logger.Fatal("Cannot open AMQP channel", zap.Error(err))
+	}
+	defer amqpCh.Close()
+
+	botApp, err := tgbot.NewApp(
+		pool,
+		logger.Named("TG_BOT"),
+		redisClient,
+		amqpCh,
+		bot,
+	)
+
 	if err != nil {
 		logger.Fatal("Cannot create bot instance", zap.Error(err))
 	}
