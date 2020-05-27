@@ -29,6 +29,7 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 
 	for msg := range msgCh {
+		msg.Ack(false)
 		var tgmsg tgbotapi.Message
 		if err := json.Unmarshal(msg.Body, &tgmsg); err != nil {
 			a.logger.Error("Failed to unmarshall message", zap.Error(err))
