@@ -10,6 +10,7 @@ services:
       - "-token=${TG_TOKEN}"
       - "-redis-addr=${REDIS_ADDR}"
       - "-rabbitmq-url=${RABBITMQ_URL}"
+      - "-subtoken=${SUB_TOKEN}"
       - "-v"
     depends_on:
       - redis

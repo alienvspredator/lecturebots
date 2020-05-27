@@ -10,6 +10,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/alienvspredator/tgbot/internal/notifybot"
 	"github.com/alienvspredator/tgbot/internal/tgbot"
 	"github.com/alienvspredator/tgbot/pkg/flagsetup"
 	"github.com/go-redis/redis/v8"
@@ -20,13 +21,14 @@ import (
 )
 
 var (
-	flagToken       string
-	flagVerb        bool
-	flagDSN         string
-	flagRedisAddr   string
-	flagRabbitMQURL string
+	flagToken           string
+	flagVerb            bool
+	flagDSN             string
+	flagRedisAddr       string
+	flagRabbitMQURL     string
+	flagSubscriberToken string
 
-	requiredFlags = []string{"token", "dsn", "redis-addr", "rabbitmq-url"}
+	requiredFlags = []string{"token", "dsn", "redis-addr", "rabbitmq-url", "subtoken"}
 
 	gitCommit string
 )
@@ -47,6 +49,7 @@ See details:
 
 	flag.StringVar(&flagRedisAddr, "redis-addr", "", "Redis address")
 	flag.StringVar(&flagRabbitMQURL, "rabbitmq-url", "", "RabbitMQ URL")
+	flag.StringVar(&flagSubscriberToken, "subtoken", "", "Subscriber bot token")
 }
 
 func newLogger(debug bool) (*zap.Logger, error) {
@@ -88,7 +91,7 @@ func main() {
 	})
 	defer redisClient.Close()
 
-	bot, err := tgbotapi.NewBotAPI(flagToken)
+	publishBot, err := tgbotapi.NewBotAPI(flagToken)
 	if err != nil {
 		logger.Fatal("Cannot create bot api instance", zap.Error(err))
 	}
@@ -105,16 +108,15 @@ func main() {
 	}
 	defer amqpCh.Close()
 
-	botApp, err := tgbot.NewApp(
+	publishBotApp, err := tgbot.NewApp(
 		pool,
 		logger.Named("TG_BOT"),
 		redisClient,
 		amqpCh,
-		bot,
+		publishBot,
 	)
-
 	if err != nil {
-		logger.Fatal("Cannot create bot instance", zap.Error(err))
+		logger.Fatal("Failed to create publisher app instance", zap.Error(err))
 	}
 
 	go func() {
@@ -128,11 +130,33 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := botApp.Run(ctx); err != nil {
+		if err := publishBotApp.Run(ctx); err != nil {
 			logger.Error("Bot exited with error", zap.Error(err))
 		}
 
 		logger.Info("Bot goroutine stopped")
+	}()
+
+	subscriberBot, err := tgbotapi.NewBotAPI(flagSubscriberToken)
+	if err != nil {
+		logger.Fatal("Failed to create subscriber bot", zap.Error(err))
+	}
+
+	subscrCh, err := rabbitMQ.Channel()
+	if err != nil {
+		logger.Fatal("Cannot open AMQP channel", zap.Error(err))
+	}
+	defer subscrCh.Close()
+	notifyApp := notifybot.NewApp(logger, subscriberBot, subscrCh)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := notifyApp.Run(ctx); err != nil {
+			logger.Error("Notification bot exited with error", zap.Error(err))
+		}
+
+		logger.Info("Notification bot goroutine stopped")
 	}()
 
 	wg.Wait()
