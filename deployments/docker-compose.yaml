@@ -8,3 +8,12 @@ services:
     command:
       - "-dsn=${DSN}"
       - "-token=${TG_TOKEN}"
+      - "-redis-addr=${REDIS_ADDR}"
+      - "-v"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis
+    ports:
+     - "6379:6379"

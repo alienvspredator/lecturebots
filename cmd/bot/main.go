@@ -12,17 +12,20 @@ import (
 
 	"github.com/alienvspredator/tgbot/internal/tgbot"
 	"github.com/alienvspredator/tgbot/pkg/flagsetup"
+	"github.com/go-redis/redis/v8"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
 )
 
 var (
-	flagToken string
-	flagVerb  bool
-	flagDSN   string
-	gitCommit string
+	flagToken     string
+	flagVerb      bool
+	flagDSN       string
+	flagRedisAddr string
+	gitCommit     string
 
-	requiredFlags = []string{"token", "dsn"}
+	requiredFlags = []string{"token", "dsn", "redis-addr"}
 )
 
 func init() {
@@ -37,6 +40,12 @@ func init() {
 
 See details:
 	https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING`,
+	)
+	flag.StringVar(
+		&flagRedisAddr,
+		"redis-addr",
+		"",
+		"Redis address",
 	)
 }
 
@@ -74,7 +83,17 @@ func main() {
 	}
 	defer pool.Close()
 
-	botApp, err := tgbot.NewApp(pool, logger.Named("TelegramBot"))
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: flagRedisAddr,
+	})
+	defer redisClient.Close()
+
+	bot, err := tgbotapi.NewBotAPI(flagToken)
+	if err != nil {
+		logger.Fatal("Cannot create bot api instance", zap.Error(err))
+	}
+
+	botApp, err := tgbot.NewApp(pool, logger.Named("TG_BOT"), redisClient, bot)
 	if err != nil {
 		logger.Fatal("Cannot create bot instance", zap.Error(err))
 	}
