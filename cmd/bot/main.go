@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -19,6 +20,7 @@ var (
 	flagToken string
 	flagVerb  bool
 	flagDSN   string
+	gitCommit string
 
 	requiredFlags = []string{"token", "dsn"}
 )
@@ -46,7 +48,13 @@ func newLogger(debug bool) (*zap.Logger, error) {
 	return zap.NewProduction()
 }
 
+func outputInfo() {
+	fmt.Printf("%s\nCommit: %s\n", logo, gitCommit)
+}
+
 func main() {
+	outputInfo()
+
 	flag.Parse()
 	if err := flagsetup.CheckRequired(requiredFlags); err != nil {
 		log.Fatalln(err)
