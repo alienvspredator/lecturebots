@@ -11,6 +11,7 @@ services:
       - "-redis-addr=${REDIS_ADDR}"
       - "-rabbitmq-url=${RABBITMQ_URL}"
       - "-subtoken=${SUB_TOKEN}"
+      - "-subscriber-id=${SUBSCRIBER_ID}"
       - "-v"
     depends_on:
       - redis

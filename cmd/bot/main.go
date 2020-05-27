@@ -27,6 +27,7 @@ var (
 	flagRedisAddr       string
 	flagRabbitMQURL     string
 	flagSubscriberToken string
+	flagSubscriberID    int64
 
 	requiredFlags = []string{"token", "dsn", "redis-addr", "rabbitmq-url", "subtoken"}
 
@@ -50,6 +51,7 @@ See details:
 	flag.StringVar(&flagRedisAddr, "redis-addr", "", "Redis address")
 	flag.StringVar(&flagRabbitMQURL, "rabbitmq-url", "", "RabbitMQ URL")
 	flag.StringVar(&flagSubscriberToken, "subtoken", "", "Subscriber bot token")
+	flag.Int64Var(&flagSubscriberID, "subscriber-id", 0, "Subscriber ID")
 }
 
 func newLogger(debug bool) (*zap.Logger, error) {
@@ -147,7 +149,7 @@ func main() {
 		logger.Fatal("Cannot open AMQP channel", zap.Error(err))
 	}
 	defer subscrCh.Close()
-	notifyApp := notifybot.NewApp(logger, subscriberBot, subscrCh)
+	notifyApp := notifybot.NewApp(logger, subscriberBot, subscrCh, flagSubscriberID)
 
 	wg.Add(1)
 	go func() {

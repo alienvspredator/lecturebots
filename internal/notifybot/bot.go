@@ -15,11 +15,11 @@ type App struct {
 }
 
 // NewApp ...
-func NewApp(logger *zap.Logger, api *tgbotapi.BotAPI, ch *amqp.Channel) *App {
+func NewApp(logger *zap.Logger, api *tgbotapi.BotAPI, ch *amqp.Channel, subscriberID int64) *App {
 	return &App{
 		logger,
 		api,
 		ch,
-		81223435,
+		subscriberID,
 	}
 }
