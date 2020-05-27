@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  bot:
+    build:
+      context: ../.
+      target: runner
+    command:
+      - "-dsn=${DSN}"
+      - "-token=${TG_TOKEN}"
